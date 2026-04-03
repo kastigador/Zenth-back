@@ -43,6 +43,17 @@ enum ImportStatus {
   FAILED
 }
 
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  AUDIO
+}
+
 model User {
   id           String      @id @default(cuid())
   name         String
@@ -54,6 +65,7 @@ model User {
   updatedAt    DateTime    @updatedAt
   payments     Payment[]
   imports      ImportJob[]
+  chatMessages ChatMessage[]
 }
 
 model Client {
@@ -166,4 +178,19 @@ model ImportJob {
   createdAt     DateTime     @default(now())
   completedAt   DateTime?
   uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+}
+
+model ChatMessage {
+  id        String              @id @default(cuid())
+  userId    String
+  role      ChatMessageRole
+  type      ChatMessageType
+  text      String
+  mediaUri  String?
+  card      Json?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

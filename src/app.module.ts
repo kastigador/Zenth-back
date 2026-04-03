@@ -10,6 +10,7 @@ import { PricingModule } from './modules/pricing/pricing.module';
 import { ProductsModule } from './modules/products/products.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { UsersModule } from './modules/users/users.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { UsersModule } from './modules/users/users.module';
     NotificationsModule,
     DashboardModule,
     QueueModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
