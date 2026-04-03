@@ -1,8 +1,17 @@
-import { Injectable, Optional, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
-import { AuthUser, JwtPayload } from './auth.types';
+import { AuthUser, JwtPayload, UserRole } from './auth.types';
+
+export type RegisterInput = {
+  name: string;
+  email: string;
+  businessName: string;
+  password: string;
+  userRole: UserRole;
+};
 
 const DEMO_USERS: AuthUser[] = [
   {
@@ -62,8 +71,57 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken?: string) {
-    if (!refreshToken) {
+  async register(input: RegisterInput) {
+    const exists = this.users.some((u) => u.email.toLowerCase() === input.email.toLowerCase());
+    if (exists) {
+      throw new BadRequestException('Email ya registrado');
+    }
+
+    const passwordHash = await argon2.hash(input.password);
+
+    const newUser: AuthUser = {
+      id: randomUUID(),
+      name: input.name,
+      email: input.email.toLowerCase(),
+      businessName: input.businessName,
+      role: 'vendedor',
+      userRole: input.userRole,
+      passwordHash,
+    };
+
+    this.users.push(newUser);
+
+    const payload: JwtPayload = {
+      sub: newUser.id,
+      email: newUser.email,
+      role: newUser.role,
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService?.get<string>('JWT_ACCESS_SECRET') ?? 'dev-access-secret',
+      expiresIn: this.configService?.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '1h',
+    });
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService?.get<string>('JWT_REFRESH_SECRET') ?? 'dev-refresh-secret',
+      expiresIn: this.configService?.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        businessName: newUser.businessName,
+        role: newUser.role,
+        userRole: newUser.userRole,
+      },
+    };
+  }
+
+  async refresh(refreshToken?: string) {    if (!refreshToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 

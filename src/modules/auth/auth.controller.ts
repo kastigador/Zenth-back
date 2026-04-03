@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsString, MinLength, IsOptional } from 'class-validator';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { UserRole } from './auth.types';
 
 const ACCESS_COOKIE_NAME = 'crm_access_token';
 const REFRESH_COOKIE_NAME = 'crm_refresh_token';
@@ -37,6 +38,26 @@ class RefreshDto {
   refreshToken?: string;
 }
 
+class RegisterDto {
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(2)
+  businessName!: string;
+
+  @IsString()
+  @MinLength(6)
+  password!: string;
+
+  @IsEnum(['dueno', 'admin', 'empleado'])
+  userRole!: UserRole;
+}
+
 @Controller('auth')
 @ApiTags('Auth')
 export class AuthController {
@@ -49,6 +70,26 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto.email, dto.password);
+
+    res.cookie(ACCESS_COOKIE_NAME, result.accessToken, getCookieOptions(ACCESS_COOKIE_TTL_MS));
+    res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getCookieOptions(REFRESH_COOKIE_TTL_MS));
+
+    return result;
+  }
+
+  @Post('register')
+  @ApiOperation({ summary: 'Registrar nuevo usuario' })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({ status: 201, description: 'Registro exitoso con access/refresh token' })
+  @ApiResponse({ status: 400, description: 'Email ya registrado o datos inválidos' })
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.register({
+      name: dto.name,
+      email: dto.email,
+      businessName: dto.businessName,
+      password: dto.password,
+      userRole: dto.userRole,
+    });
 
     res.cookie(ACCESS_COOKIE_NAME, result.accessToken, getCookieOptions(ACCESS_COOKIE_TTL_MS));
     res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getCookieOptions(REFRESH_COOKIE_TTL_MS));
