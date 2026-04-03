@@ -1,13 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
 import {
   CreateClientDto,
   ListClientsQueryDto,
   UpdateClientDto,
 } from './clients.dto';
 import { ClientActivityRecord, ClientRecord } from './clients.types';
-
-const E164_REGEX = /^\+[1-9]\d{7,14}$/;
+import {
+  E164_REGEX,
+  applyClientUpdate,
+  buildClientRecord,
+  createActivityRecord,
+  filterClients,
+  paginate,
+} from './clients.utils';
 
 @Injectable()
 export class ClientsService {
@@ -16,34 +21,8 @@ export class ClientsService {
   private readonly tagsCatalog = new Set<string>(['vip', 'retail']);
 
   list(query: ListClientsQueryDto) {
-    const includeInactive = query.includeInactive ?? false;
-    const search = (query.search ?? '').trim().toLowerCase();
-    const tag = (query.tag ?? '').trim().toLowerCase();
-
-    const filtered = this.clients.filter((client) => {
-      if (!includeInactive && !client.isActive) {
-        return false;
-      }
-
-      const bySearch =
-        search.length === 0 ||
-        client.businessName.toLowerCase().includes(search) ||
-        (client.contactName ?? '').toLowerCase().includes(search);
-      const byTag = tag.length === 0 || client.tags.map((t) => t.toLowerCase()).includes(tag);
-
-      return bySearch && byTag;
-    });
-
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
-    const start = (page - 1) * limit;
-
-    return {
-      items: filtered.slice(start, start + limit),
-      total: filtered.length,
-      page,
-      limit,
-    };
+    const filtered = filterClients(this.clients, query);
+    return paginate(filtered, query.page, query.limit);
   }
 
   findById(id: string) {
@@ -64,20 +43,7 @@ export class ClientsService {
     this.assertPhoneValid(dto.phoneE164);
 
     const now = new Date().toISOString();
-    const client: ClientRecord = {
-      id: randomUUID(),
-      businessName: dto.businessName,
-      contactName: dto.contactName,
-      email: dto.email,
-      phoneE164: dto.phoneE164,
-      address: dto.address,
-      tags: [...new Set(dto.tags.map((tag) => tag.trim()).filter(Boolean))],
-      notifyChannel: dto.notifyChannel,
-      telegramChatId: undefined,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const client = buildClientRecord(dto, now);
 
     for (const tag of client.tags) {
       this.tagsCatalog.add(tag);
@@ -94,35 +60,12 @@ export class ClientsService {
 
     const client = this.findById(id);
 
-    if (dto.businessName !== undefined) {
-      client.businessName = dto.businessName;
-    }
-    if (dto.contactName !== undefined) {
-      client.contactName = dto.contactName;
-    }
-    if (dto.email !== undefined) {
-      client.email = dto.email;
-    }
-    if (dto.phoneE164 !== undefined) {
-      client.phoneE164 = dto.phoneE164;
-    }
-    if (dto.address !== undefined) {
-      client.address = dto.address;
-    }
+    applyClientUpdate(client, dto, new Date().toISOString());
     if (dto.tags !== undefined) {
-      client.tags = [...new Set(dto.tags.map((tag) => tag.trim()).filter(Boolean))];
       for (const tag of client.tags) {
         this.tagsCatalog.add(tag);
       }
     }
-    if (dto.notifyChannel !== undefined) {
-      client.notifyChannel = dto.notifyChannel;
-    }
-    if (dto.telegramChatId !== undefined) {
-      client.telegramChatId = dto.telegramChatId;
-    }
-
-    client.updatedAt = new Date().toISOString();
     this.logActivity(client.id, 'client.updated', `Client ${client.businessName} updated`, actorId);
 
     return client;
@@ -171,14 +114,7 @@ export class ClientsService {
 
   private logActivity(clientId: string, type: string, description: string, actorId: string) {
     const existing = this.historyByClient.get(clientId) ?? [];
-    existing.push({
-      id: randomUUID(),
-      clientId,
-      type,
-      description,
-      actorId,
-      timestamp: new Date().toISOString(),
-    });
+    existing.push(createActivityRecord(clientId, type, description, actorId));
     this.historyByClient.set(clientId, existing);
   }
 }
