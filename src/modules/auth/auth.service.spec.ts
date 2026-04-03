@@ -24,18 +24,22 @@ function makeService() {
 describe('AuthService', () => {
   it('login devuelve access y refresh token cuando credenciales son validas', async () => {
     const { service } = makeService();
+    const verifySpy = jest.spyOn(argon2, 'verify').mockResolvedValue(true);
 
     const result = await service.login('admin@crm.local', 'secret123');
 
     expect(result.user.email).toBe('admin@crm.local');
     expect(result.accessToken).toContain('1h');
     expect(result.refreshToken).toContain('7d');
+    verifySpy.mockRestore();
   });
 
   it('login rechaza credenciales invalidas', async () => {
     const { service } = makeService();
+    const verifySpy = jest.spyOn(argon2, 'verify').mockResolvedValue(false);
 
     await expect(service.login('admin@crm.local', 'bad-pass')).rejects.toBeInstanceOf(UnauthorizedException);
+    verifySpy.mockRestore();
   });
 
   it('refresh devuelve access token nuevo con refresh token valido', async () => {

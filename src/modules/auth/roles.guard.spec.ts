@@ -4,6 +4,8 @@ import { RolesGuard } from './roles.guard';
 
 function makeContext(role: 'admin' | 'vendedor'): ExecutionContext {
   return {
+    getHandler: () => ({}),
+    getClass: () => class TestController {},
     switchToHttp: () => ({
       getRequest: () => ({ user: { role } }),
     }),
