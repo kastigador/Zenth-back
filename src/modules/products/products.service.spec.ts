@@ -62,6 +62,48 @@ describe('ProductsService', () => {
     expect(updated.isActive).toBe(false);
   });
 
+  it('actualiza todos los campos opcionales', () => {
+    const service = new ProductsService();
+    const created = service.create({
+      sku: 'SKU-300',
+      name: 'Plan base',
+      description: 'desc',
+      basePrice: 1000,
+      currency: 'ARS',
+      isActive: true,
+    });
+
+    const updated = service.update(created.id, {
+      sku: 'SKU-301',
+      name: 'Plan actualizado',
+      description: 'desc nueva',
+      basePrice: 1500,
+      currency: 'USD',
+      isActive: false,
+    });
+
+    expect(updated.sku).toBe('SKU-301');
+    expect(updated.description).toBe('desc nueva');
+    expect(updated.basePrice).toBe(1500);
+    expect(updated.currency).toBe('USD');
+    expect(updated.isActive).toBe(false);
+  });
+
+  it('lista con paginación', () => {
+    const service = new ProductsService();
+
+    service.create({ sku: 'S1', name: 'A', basePrice: 10, currency: 'ARS' });
+    service.create({ sku: 'S2', name: 'B', basePrice: 20, currency: 'ARS' });
+    service.create({ sku: 'S3', name: 'C', basePrice: 30, currency: 'ARS' });
+
+    const result = service.list({ page: 2, limit: 2 });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(2);
+    expect(result.limit).toBe(2);
+  });
+
   it('lanza not found para id inexistente', () => {
     const service = new ProductsService();
 
