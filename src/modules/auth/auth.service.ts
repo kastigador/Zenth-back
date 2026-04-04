@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { PinoLogger } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { UserRole as PrismaUserRole } from '@prisma/client';
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly logger?: PinoLogger,
   ) {}
 
   private toAppRole(role: PrismaUserRole): 'admin' | 'vendedor' {
@@ -45,6 +47,8 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const normalizedEmail = email.toLowerCase();
+    this.logger?.info({ event: 'auth.login.attempt', email: normalizedEmail }, 'Login attempt');
+
     let user = this.users.find((candidate) => candidate.email.toLowerCase() === normalizedEmail);
 
     if (this.prisma) {
@@ -74,11 +78,13 @@ export class AuthService {
     }
 
     if (!user) {
+      this.logger?.warn({ event: 'auth.login.failed', reason: 'user_not_found', email: normalizedEmail }, 'Login failed');
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const validPassword = await argon2.verify(user.passwordHash, password);
     if (!validPassword) {
+      this.logger?.warn({ event: 'auth.login.failed', reason: 'invalid_password', email: normalizedEmail }, 'Login failed');
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -98,6 +104,8 @@ export class AuthService {
       expiresIn: this.configService?.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
     });
 
+    this.logger?.info({ event: 'auth.login.success', userId: user.id, role: user.role }, 'Login success');
+
     return {
       accessToken,
       refreshToken,
@@ -112,6 +120,8 @@ export class AuthService {
 
   async register(input: RegisterInput) {
     const normalizedEmail = input.email.toLowerCase();
+    this.logger?.info({ event: 'auth.register.attempt', email: normalizedEmail, requestedRole: input.userRole }, 'Register attempt');
+
     const existsInMemory = this.users.some((u) => u.email.toLowerCase() === normalizedEmail);
 
     const existsInDb = this.prisma
@@ -120,6 +130,7 @@ export class AuthService {
 
     const exists = existsInMemory || existsInDb;
     if (exists) {
+      this.logger?.warn({ event: 'auth.register.failed', reason: 'email_exists', email: normalizedEmail }, 'Register failed');
       throw new BadRequestException('Email ya registrado');
     }
 
@@ -161,6 +172,7 @@ export class AuthService {
     }
 
     this.users.push(newUser);
+    this.logger?.info({ event: 'auth.register.success', userId: newUser.id, role: newUser.role }, 'Register success');
 
     const payload: JwtPayload = {
       sub: newUser.id,
@@ -193,6 +205,7 @@ export class AuthService {
   }
 
   async refresh(refreshToken?: string) {    if (!refreshToken) {
+      this.logger?.warn({ event: 'auth.refresh.failed', reason: 'missing_token' }, 'Refresh failed');
       throw new UnauthorizedException('Invalid refresh token');
     }
 
@@ -213,6 +226,7 @@ export class AuthService {
         accessToken,
       };
     } catch {
+      this.logger?.warn({ event: 'auth.refresh.failed', reason: 'invalid_token' }, 'Refresh failed');
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

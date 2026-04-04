@@ -1,12 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { EncryptedValidationPipe } from './common/security/encrypted-validation.pipe';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);
   const apiPrefix = config.get<string>('API_PREFIX', 'v1');
   const payloadSecret = config.get<string>('PAYLOAD_ENCRYPTION_SECRET', '');

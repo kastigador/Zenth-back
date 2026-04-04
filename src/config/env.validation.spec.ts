@@ -18,6 +18,7 @@ describe('env.validation', () => {
     const result = envSchema.parse(baseEnv);
 
     expect(result.NODE_ENV).toBe('development');
+    expect(result.LOG_LEVEL).toBe('info');
     expect(result.PORT).toBe(3000);
     expect(result.API_PREFIX).toBe('v1');
     expect(result.JWT_ACCESS_EXPIRES_IN).toBe('1h');
@@ -28,16 +29,22 @@ describe('env.validation', () => {
     const result = envSchema.parse({
       ...baseEnv,
       NODE_ENV: 'production',
+      LOG_LEVEL: 'debug',
       PORT: '4000',
       API_PREFIX: 'api',
     });
 
     expect(result.NODE_ENV).toBe('production');
+    expect(result.LOG_LEVEL).toBe('debug');
     expect(result.PORT).toBe(4000);
     expect(result.API_PREFIX).toBe('api');
   });
 
   it('falla cuando falta una variable requerida', () => {
     expect(() => envSchema.parse({ ...baseEnv, JWT_ACCESS_SECRET: '' })).toThrow();
+  });
+
+  it('falla cuando LOG_LEVEL no es válido', () => {
+    expect(() => envSchema.parse({ ...baseEnv, LOG_LEVEL: 'verbose' })).toThrow();
   });
 });

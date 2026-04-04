@@ -418,14 +418,19 @@ npm install
 # Base de datos
 DATABASE_URL="postgresql://user:password@localhost:5432/crm_negocio_dev"
 
+# Redis
+REDIS_URL="redis://localhost:6379"
+
 # JWT
-JWT_SECRET="tu-secreto-super-seguro-cambiar-en-produccion"
-JWT_EXPIRATION="7d"
-REFRESH_TOKEN_SECRET="otro-secreto-diferente"
+JWT_ACCESS_SECRET="tu-access-secret-super-seguro"
+JWT_REFRESH_SECRET="tu-refresh-secret-super-seguro"
+JWT_ACCESS_EXPIRES_IN="1h"
+JWT_REFRESH_EXPIRES_IN="7d"
 
 # API
-API_PORT=3000
-API_URL="http://localhost:3000"
+PORT=3000
+API_PREFIX="v1"
+LOG_LEVEL="info" # fatal|error|warn|info|debug|trace|silent
 
 # Frontend
 FRONTEND_URL="http://localhost:8081"
@@ -456,6 +461,57 @@ OPENAI_MODEL="gpt-4"
 # Node
 NODE_ENV="development"
 ```
+
+### 🔎 Observabilidad: logs y trazabilidad
+
+- El backend usa **logging estructurado con `nestjs-pino`**.
+- Se redaccionan automáticamente campos sensibles como:
+  - `Authorization`
+  - `Cookie`
+  - `password`
+  - `refreshToken`
+  - `Set-Cookie`
+- Cada request tiene `requestId` y se propaga por header `x-request-id`.
+
+Ejemplo de request con correlación:
+
+```bash
+curl -i -X POST "http://localhost:3000/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -H "x-request-id: demo-login-001" \
+  -d '{"email":"admin@crm.local","password":"secret123"}'
+```
+
+En logs vas a poder correlacionar ese mismo `requestId` en toda la traza.
+
+### 🛟 Mini Playbook de Incidentes (Auth/Chat)
+
+Cuando algo falla en producción o staging, seguí este orden:
+
+1. **Identificar `x-request-id`**
+   - Pedí al frontend/QA el `x-request-id` de la respuesta fallida.
+   - Buscalo en logs para reconstruir toda la traza de esa request.
+
+2. **Validar evento de auth**
+   - Login: `auth.login.attempt`, `auth.login.success`, `auth.login.failed`.
+   - Refresh: `auth.refresh.failed`.
+   - Si hay `failed`, revisar campo `reason` (`user_not_found`, `invalid_password`, `missing_token`, `invalid_token`).
+
+3. **Confirmar estado HTTP y latencia**
+   - Revisar `statusCode` y `responseTime` en la entrada HTTP de pino.
+   - `401/403` recurrentes suelen indicar token/cookie vencida o rol insuficiente.
+
+4. **Verificar cookies/tokens sin exponer secretos**
+   - Confirmar que llegan cookies `crm_access_token`/`crm_refresh_token` (sin imprimir su valor).
+   - En `NODE_ENV=production`, validar `secure=true` y `sameSite=none` si hay frontend en dominio distinto.
+
+5. **Corroborar configuración efectiva**
+   - Revisar `NODE_ENV`, `LOG_LEVEL`, `API_PREFIX`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`.
+   - Si el problema es intermitente entre instancias, descartar drift de env vars.
+
+6. **Si impacta chat, validar autenticación primero**
+   - Antes de debuggear `/chat/messages`, confirmar que `/auth/me` responde 200 para el mismo usuario/request.
+   - La mayoría de errores de chat en runtime derivan de sesión/token, no de persistencia.
 
 ### Frontend (.env)
 
@@ -653,7 +709,8 @@ GET /api/dashboard/reports/export?format=xlsx
 ### Documentación Swagger
 
 ```
-http://localhost:3000/api/swagger
+http://localhost:3000/docs
+http://localhost:3000/v1/docs
 ```
 
 ---
@@ -899,4 +956,3 @@ Construido con ❤️ usando:
 **Última actualización:** 3 de abril de 2026  
 **Versión:** 0.1.0  
 **Estado:** En desarrollo activo
-
