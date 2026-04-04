@@ -43,4 +43,36 @@ describe('NotificationsService', () => {
 
     expect(() => service.confirmTelegramLink('111111', '123')).toThrow(NotFoundException);
   });
+
+  it('marca failed en telegram si cliente no está vinculado', () => {
+    const service = new NotificationsService();
+
+    const result = service.sendPaymentNotification({
+      clientId: 'client-no-telegram',
+      paymentId: 'pay-2',
+      channel: 'telegram',
+      amount: 9000,
+      description: 'Cuota abril',
+    });
+
+    expect(result.status).toBe('failed');
+    expect(service.listLogs().items[0]?.message).toBe('telegram_not_linked');
+  });
+
+  it('envía both y genera dos logs cuando hay telegram vinculado', () => {
+    const service = new NotificationsService();
+    const start = service.startTelegramLink('client-2');
+    service.confirmTelegramLink(start.code, 'chat-2');
+
+    const result = service.sendPaymentNotification({
+      clientId: 'client-2',
+      paymentId: 'pay-3',
+      channel: 'both',
+      amount: 11000,
+      description: 'Cuota mayo',
+    });
+
+    expect(result.logsCreated).toBe(2);
+    expect(result.status).toBe('sent');
+  });
 });

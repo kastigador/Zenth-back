@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 describe('PaymentsService', () => {
@@ -80,5 +80,45 @@ describe('PaymentsService', () => {
         },
       }),
     ).toThrow(NotFoundException);
+  });
+
+  it('lanza error cuando signature de stripe es invalida', () => {
+    const service = new PaymentsService();
+
+    expect(() =>
+      service.applyStripeWebhook({
+        signature: 'invalid-signature',
+        event: {
+          type: 'payment_intent.succeeded',
+          data: { object: { id: 'pi_x' } },
+        },
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('marca pago como failed con webhook payment_failed', () => {
+    const service = new PaymentsService();
+    const created = service.createPayment({
+      clientId: 'client-1',
+      amount: 25000,
+      currency: 'ARS',
+      createdByUserId: 'user-1',
+      idempotencyKey: 'idem-failed',
+    });
+
+    service.applyStripeWebhook({
+      signature: 'valid-signature',
+      event: {
+        type: 'payment_intent.payment_failed',
+        data: {
+          object: {
+            id: created.stripePaymentIntentId,
+          },
+        },
+      },
+    });
+
+    const payment = service.getPayment(created.paymentId);
+    expect(payment.status).toBe('failed');
   });
 });
