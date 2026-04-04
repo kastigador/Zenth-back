@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { JwtPayload } from '../auth/auth.types';
+import { ROLES_KEY } from '../auth/roles.decorator';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -23,10 +25,10 @@ describe('UsersController', () => {
     },
   ];
 
-  const mockJwtPayload = {
+  const mockJwtPayload: JwtPayload = {
     sub: 'admin-id',
     email: 'admin@test.com',
-    role: 'ADMIN',
+    role: 'admin',
   };
 
   beforeEach(async () => {
@@ -66,6 +68,11 @@ describe('UsersController', () => {
       expect(result).toHaveProperty('total');
       expect(result.requestedBy).toBe('admin@test.com');
       expect(result.total).toBe(2);
+    });
+
+    it('debe permitir acceso a admin y vendedor por metadata de roles', () => {
+      const roles = Reflect.getMetadata(ROLES_KEY, UsersController.prototype.list);
+      expect(roles).toEqual(['admin', 'vendedor']);
     });
   });
 });

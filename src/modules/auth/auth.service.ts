@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
+import { UserRole as PrismaUserRole } from '@prisma/client';
+import { PrismaService } from '../../common/prisma.service';
 import { AuthUser, JwtPayload, UserRole } from './auth.types';
 
 export type RegisterInput = {
@@ -30,10 +32,47 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     @Optional() private readonly configService?: ConfigService,
+    @Optional() private readonly prisma?: PrismaService,
   ) {}
 
+  private toAppRole(role: PrismaUserRole): 'admin' | 'vendedor' {
+    return role === PrismaUserRole.ADMIN ? 'admin' : 'vendedor';
+  }
+
+  private toPrismaRole(role: 'admin' | 'vendedor'): PrismaUserRole {
+    return role === 'admin' ? PrismaUserRole.ADMIN : PrismaUserRole.SELLER;
+  }
+
   async login(email: string, password: string) {
-    const user = this.users.find((candidate) => candidate.email.toLowerCase() === email.toLowerCase());
+    const normalizedEmail = email.toLowerCase();
+    let user = this.users.find((candidate) => candidate.email.toLowerCase() === normalizedEmail);
+
+    if (this.prisma) {
+      const dbUser = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (dbUser) {
+        const existingClient = await this.prisma.client.findFirst({ where: { email: normalizedEmail } });
+        if (!existingClient) {
+          await this.prisma.client.create({
+            data: {
+              businessName: dbUser.name,
+              contactName: dbUser.name,
+              email: dbUser.email,
+              tags: [],
+              isActive: true,
+            },
+          });
+        }
+
+        user = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: this.toAppRole(dbUser.role),
+          passwordHash: dbUser.passwordHash,
+        };
+      }
+    }
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -72,7 +111,14 @@ export class AuthService {
   }
 
   async register(input: RegisterInput) {
-    const exists = this.users.some((u) => u.email.toLowerCase() === input.email.toLowerCase());
+    const normalizedEmail = input.email.toLowerCase();
+    const existsInMemory = this.users.some((u) => u.email.toLowerCase() === normalizedEmail);
+
+    const existsInDb = this.prisma
+      ? Boolean(await this.prisma.user.findUnique({ where: { email: normalizedEmail } }))
+      : false;
+
+    const exists = existsInMemory || existsInDb;
     if (exists) {
       throw new BadRequestException('Email ya registrado');
     }
@@ -82,12 +128,37 @@ export class AuthService {
     const newUser: AuthUser = {
       id: randomUUID(),
       name: input.name,
-      email: input.email.toLowerCase(),
+      email: normalizedEmail,
       businessName: input.businessName,
       role: 'vendedor',
       userRole: input.userRole,
       passwordHash,
     };
+
+    if (this.prisma) {
+      const created = await this.prisma.user.create({
+        data: {
+          name: input.name,
+          email: normalizedEmail,
+          passwordHash,
+          role: this.toPrismaRole('vendedor'),
+          isActive: true,
+        },
+      });
+
+      await this.prisma.client.create({
+        data: {
+          businessName: input.businessName,
+          contactName: input.name,
+          email: normalizedEmail,
+          tags: [],
+          isActive: true,
+        },
+      });
+
+      newUser.id = created.id;
+      newUser.role = this.toAppRole(created.role);
+    }
 
     this.users.push(newUser);
 

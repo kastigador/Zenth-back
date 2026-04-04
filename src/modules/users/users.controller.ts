@@ -15,8 +15,8 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles('admin')
-  @ApiOperation({ summary: 'Listar usuarios (solo admin)' })
+  @Roles('admin', 'vendedor')
+  @ApiOperation({ summary: 'Listar usuarios (admin y vendedor)' })
   async list(@CurrentUser() user: JwtPayload) {
     const users = await this.usersService.listUsers();
     return {

@@ -2,6 +2,38 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 
 describe('ClientsService', () => {
+  it('hidrata clientes desde Prisma en onModuleInit', async () => {
+    const prismaMock = {
+      client: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'db-client-1',
+            businessName: 'Cliente Persistido',
+            contactName: 'Test User',
+            email: 'test@test.com',
+            phoneE164: null,
+            address: null,
+            notifyChannel: 'WHATSAPP',
+            telegramChatId: null,
+            tags: ['vip'],
+            isActive: true,
+            createdAt: new Date('2026-04-04T00:00:00.000Z'),
+            updatedAt: new Date('2026-04-04T00:00:00.000Z'),
+          },
+        ]),
+      },
+    } as any;
+
+    const service = new ClientsService(prismaMock);
+    await service.onModuleInit();
+
+    const listed = service.list({ page: 1, limit: 20 });
+
+    expect(prismaMock.client.findMany).toHaveBeenCalled();
+    expect(listed.total).toBe(1);
+    expect(listed.items[0]?.businessName).toBe('Cliente Persistido');
+  });
+
   it('crea cliente valido y lo lista', () => {
     const service = new ClientsService();
 
@@ -117,5 +149,28 @@ describe('ClientsService', () => {
     const service = new ClientsService();
 
     expect(() => service.findById('missing')).toThrow(NotFoundException);
+  });
+
+  it('history lanza not found para cliente inexistente', () => {
+    const service = new ClientsService();
+
+    expect(() => service.history('missing')).toThrow(NotFoundException);
+  });
+
+  it('createTag normaliza espacios y rechaza vacio', () => {
+    const service = new ClientsService();
+
+    expect(service.createTag('  nuevo-tag  ')).toEqual({ ok: true, tag: 'nuevo-tag' });
+    expect(service.listTags().items).toContain('nuevo-tag');
+    expect(() => service.createTag('   ')).toThrow(BadRequestException);
+  });
+
+  it('listTags devuelve items ordenados', () => {
+    const service = new ClientsService();
+
+    service.createTag('zzz');
+    service.createTag('aaa');
+
+    expect(service.listTags().items).toEqual([...service.listTags().items].sort());
   });
 });

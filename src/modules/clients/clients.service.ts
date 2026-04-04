@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit, Optional } from '@nestjs/common';
+import { PrismaService } from '../../common/prisma.service';
 import {
   CreateClientDto,
   ListClientsQueryDto,
@@ -15,10 +16,47 @@ import {
 } from './clients.utils';
 
 @Injectable()
-export class ClientsService {
+export class ClientsService implements OnModuleInit {
   private readonly clients: ClientRecord[] = [];
   private readonly historyByClient = new Map<string, ClientActivityRecord[]>();
   private readonly tagsCatalog = new Set<string>(['vip', 'retail']);
+
+  constructor(@Optional() private readonly prisma?: PrismaService) {}
+
+  async onModuleInit() {
+    if (!this.prisma) {
+      return;
+    }
+
+    const dbClients = await this.prisma.client.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.clients.length = 0;
+    for (const dbClient of dbClients) {
+      const mapped: ClientRecord = {
+        id: dbClient.id,
+        businessName: dbClient.businessName,
+        contactName: dbClient.contactName ?? undefined,
+        email: dbClient.email ?? undefined,
+        phoneE164: dbClient.phoneE164 ?? undefined,
+        address: dbClient.address ?? undefined,
+        notifyChannel: dbClient.notifyChannel.toLowerCase() as ClientRecord['notifyChannel'],
+        telegramChatId: dbClient.telegramChatId ?? undefined,
+        tags: dbClient.tags,
+        isActive: dbClient.isActive,
+        createdAt: dbClient.createdAt.toISOString(),
+        updatedAt: dbClient.updatedAt.toISOString(),
+      };
+
+      this.clients.push(mapped);
+
+      for (const tag of mapped.tags) {
+        this.tagsCatalog.add(tag);
+      }
+    }
+  }
 
   list(query: ListClientsQueryDto) {
     const filtered = filterClients(this.clients, query);
