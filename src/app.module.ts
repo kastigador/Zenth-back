@@ -13,6 +13,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { UsersModule } from './modules/users/users.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ChatModule } from './modules/chat/chat.module';
     DashboardModule,
     QueueModule,
     ChatModule,
+    TasksModule,
   ],
 })
 export class AppModule {}
