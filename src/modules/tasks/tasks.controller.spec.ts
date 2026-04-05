@@ -1,5 +1,5 @@
 import { TasksController } from './tasks.controller';
-import { TasksService } from './tasks.service';
+import { TasksService } from './application/tasks.service';
 
 describe('TasksController', () => {
   function makeController() {

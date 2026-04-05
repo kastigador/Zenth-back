@@ -1,5 +1,5 @@
 import { IsBoolean, IsEnum, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { TaskPriority } from './tasks.types';
+import { TaskPriority } from './domain/task.types';
 
 export class CreateTaskDto {
   @IsString()

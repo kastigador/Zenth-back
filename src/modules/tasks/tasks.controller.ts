@@ -3,7 +3,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.types';
 import { CreateTaskDto, UpdateTaskDto } from './tasks.dto';
-import { TasksService } from './tasks.service';
+import { TasksService } from './application/tasks.service';
 
 @Controller('tasks')
 @UseGuards(JwtAuthGuard)
