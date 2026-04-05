@@ -4,6 +4,19 @@ import type { CreateTaskDto, UpdateTaskDto } from '../tasks.dto';
 import type { TaskRecord } from '../domain/task.types';
 import type { TasksRepository } from '../application/tasks.repository';
 
+type PrismaTaskRow = {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  dueDate: Date | null;
+  priority: TaskRecord['priority'];
+  relatedTo: string | null;
+  done: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 @Injectable()
 export class PrismaTasksRepository implements TasksRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -13,16 +26,16 @@ export class PrismaTasksRepository implements TasksRepository {
   }
 
   async listByUser(userId: string): Promise<TaskRecord[]> {
-    const rows = await this.taskTable.findMany({
+    const rows = (await this.taskTable.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-    });
+    })) as PrismaTaskRow[];
 
-    return rows.map((row) => this.toRecord(row));
+    return rows.map((row: PrismaTaskRow) => this.toRecord(row));
   }
 
   async create(userId: string, dto: CreateTaskDto): Promise<TaskRecord> {
-    const row = await this.taskTable.create({
+    const row = (await this.taskTable.create({
       data: {
         userId,
         title: dto.title.trim(),
@@ -32,7 +45,7 @@ export class PrismaTasksRepository implements TasksRepository {
         relatedTo: dto.relatedTo?.trim() || null,
         done: false,
       },
-    });
+    })) as PrismaTaskRow;
 
     return this.toRecord(row);
   }
@@ -44,7 +57,7 @@ export class PrismaTasksRepository implements TasksRepository {
       return null;
     }
 
-    const row = await this.taskTable.update({
+    const row = (await this.taskTable.update({
       where: { id },
       data: {
         title: dto.title !== undefined ? dto.title.trim() : undefined,
@@ -54,23 +67,12 @@ export class PrismaTasksRepository implements TasksRepository {
         relatedTo: dto.relatedTo !== undefined ? dto.relatedTo.trim() || null : undefined,
         done: dto.done,
       },
-    });
+    })) as PrismaTaskRow;
 
     return this.toRecord(row);
   }
 
-  private toRecord(row: {
-    id: string;
-    userId: string;
-    title: string;
-    description: string | null;
-    dueDate: Date | null;
-    priority: TaskRecord['priority'];
-    relatedTo: string | null;
-    done: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }): TaskRecord {
+  private toRecord(row: PrismaTaskRow): TaskRecord {
     return {
       id: row.id,
       userId: row.userId,
