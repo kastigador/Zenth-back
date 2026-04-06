@@ -1,6 +1,7 @@
 const createDocument = jest.fn(() => ({ openapi: '3.0.0' }));
 const setup = jest.fn();
 const nestCreate = jest.fn();
+const mkdirMock = jest.fn().mockResolvedValue(undefined);
 
 class MockDocumentBuilder {
   setTitle() {
@@ -29,6 +30,17 @@ jest.mock('@nestjs/core', () => ({
   },
 }));
 
+jest.mock('fs', () => {
+  const actual = jest.requireActual('fs');
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      mkdir: (...args: unknown[]) => mkdirMock(...args),
+    },
+  };
+});
+
 jest.mock('@nestjs/swagger', () => {
   const actual = jest.requireActual('@nestjs/swagger');
   return {
@@ -55,7 +67,9 @@ describe('main bootstrap', () => {
       get: jest.fn((key: string, fallback?: unknown) => {
         const values: Record<string, unknown> = {
           API_PREFIX: 'v1',
+          API_BODY_LIMIT: '10mb',
           PAYLOAD_ENCRYPTION_SECRET: 'payload-secret',
+          STORAGE_LOCAL_ROOT: '/tmp/crm-assets',
           PORT: 3333,
         };
         return values[key] ?? fallback;
@@ -64,9 +78,11 @@ describe('main bootstrap', () => {
 
     const app = {
       get: jest.fn(() => configService),
+      useLogger: jest.fn(),
       enableCors: jest.fn(),
       use: jest.fn(),
       setGlobalPrefix: jest.fn(),
+      useStaticAssets: jest.fn(),
       useGlobalPipes: jest.fn(),
       listen: jest.fn().mockResolvedValue(undefined),
     };
@@ -81,10 +97,13 @@ describe('main bootstrap', () => {
 
     expect(nestCreate).toHaveBeenCalled();
     expect(app.enableCors).toHaveBeenCalled();
+    expect(app.useLogger).toHaveBeenCalled();
     expect(app.setGlobalPrefix).toHaveBeenCalledWith('v1');
+    expect(app.useStaticAssets).toHaveBeenCalledWith('/tmp/crm-assets', { prefix: '/assets/' });
     expect(app.useGlobalPipes).toHaveBeenCalled();
     expect(createDocument).toHaveBeenCalled();
     expect(setup).toHaveBeenCalledTimes(2);
     expect(app.listen).toHaveBeenCalledWith(3333);
+    expect(mkdirMock).toHaveBeenCalledWith('/tmp/crm-assets', { recursive: true });
   });
 });
