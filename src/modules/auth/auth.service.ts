@@ -67,13 +67,14 @@ export class AuthService {
           });
         }
 
-        user = {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: this.toAppRole(dbUser.role),
-          passwordHash: dbUser.passwordHash,
-        };
+      user = {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        avatarUrl: dbUser.avatarUrl ?? undefined,
+        role: this.toAppRole(dbUser.role),
+        passwordHash: dbUser.passwordHash,
+      };
       }
     }
 
@@ -113,6 +114,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
         role: user.role,
       },
     };
@@ -153,6 +155,7 @@ export class AuthService {
           email: normalizedEmail,
           passwordHash,
           role: this.toPrismaRole('vendedor'),
+          avatarUrl: null,
           isActive: true,
         },
       });
@@ -197,6 +200,7 @@ export class AuthService {
         id: newUser.id,
         name: newUser.name,
         email: newUser.email,
+        avatarUrl: newUser.avatarUrl,
         businessName: newUser.businessName,
         role: newUser.role,
         userRole: newUser.userRole,

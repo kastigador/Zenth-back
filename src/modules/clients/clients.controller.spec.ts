@@ -10,12 +10,32 @@ describe('ClientsController', () => {
       createTag: jest.fn((name) => ({ ok: true, tag: name })),
       findById: jest.fn((id) => ({ id, businessName: 'Acme' })),
       update: jest.fn((id, dto, userId) => ({ id, ...dto, updatedBy: userId })),
+      updateAvatar: jest.fn((id, url, userId) => ({ id, avatarUrl: url, updatedBy: userId })),
       deactivate: jest.fn((id, userId) => ({ ok: true, id, userId })),
       history: jest.fn((id) => [{ id: 'h1', clientId: id }]),
     } as unknown as ClientsService;
 
-    const controller = new ClientsController(service);
-    return { controller, service };
+    const storage = {
+      put: jest.fn(async () => ({
+        key: 'clients/c1/avatar/demo.jpg',
+        url: 'http://localhost:3000/assets/clients/c1/avatar/demo.jpg',
+        sizeBytes: 10,
+        mimeType: 'image/jpeg',
+      })),
+      remove: jest.fn(async () => undefined),
+    } as any;
+
+    const config = {
+      get: jest.fn((key: string, fallback: string) => {
+        if (key === 'STORAGE_PUBLIC_BASE_URL') {
+          return 'http://localhost:3000/assets';
+        }
+        return fallback;
+      }),
+    } as any;
+
+    const controller = new ClientsController(service, storage, config);
+    return { controller, service, storage, config };
   }
 
   it('delegates list query to service', () => {
@@ -97,5 +117,38 @@ describe('ClientsController', () => {
     controller.history('c1');
 
     expect(service.history).toHaveBeenCalledWith('c1');
+  });
+
+  it('uploadAvatar sube archivo y delega updateAvatar', async () => {
+    const { controller, service, storage } = makeController();
+
+    (service.findById as jest.Mock).mockReturnValueOnce({
+      id: 'c1',
+      businessName: 'Acme',
+      avatarUrl: 'http://localhost:3000/assets/clients/c1/avatar/old.jpg',
+    });
+
+    const result = await controller.uploadAvatar(
+      'c1',
+      {
+        fileName: 'avatar.jpg',
+        mimeType: 'image/jpeg',
+        base64: Buffer.from('avatar-demo').toString('base64'),
+      },
+      {
+        sub: 'u1',
+        email: 'u1@test.com',
+        role: 'admin',
+      },
+    );
+
+    expect(storage.put).toHaveBeenCalled();
+    expect(service.updateAvatar).toHaveBeenCalledWith(
+      'c1',
+      'http://localhost:3000/assets/clients/c1/avatar/demo.jpg',
+      'u1',
+    );
+    expect(storage.remove).toHaveBeenCalledWith('clients/c1/avatar/old.jpg');
+    expect(result.file.url).toContain('/assets/clients/c1/avatar/');
   });
 });

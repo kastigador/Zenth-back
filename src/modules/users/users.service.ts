@@ -12,10 +12,25 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
+        avatarUrl: true,
         role: true,
         createdAt: true,
       },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  async updateMyAvatar(userId: string, avatarUrl: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        role: true,
+      },
     });
   }
 }

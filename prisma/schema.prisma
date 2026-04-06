@@ -64,6 +64,7 @@ model User {
   id           String      @id @default(cuid())
   name         String
   email        String      @unique
+  avatarUrl    String?
   passwordHash String
   role         UserRole    @default(SELLER)
   isActive     Boolean     @default(true)
@@ -95,6 +96,7 @@ model Client {
   id              String           @id @default(cuid())
   businessName    String
   contactName     String?
+  avatarUrl       String?
   email           String?
   phoneE164       String?
   address         String?

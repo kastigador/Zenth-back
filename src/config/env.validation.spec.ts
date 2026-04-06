@@ -23,6 +23,10 @@ describe('env.validation', () => {
     expect(result.API_PREFIX).toBe('v1');
     expect(result.JWT_ACCESS_EXPIRES_IN).toBe('1h');
     expect(result.JWT_REFRESH_EXPIRES_IN).toBe('7d');
+    expect(result.STORAGE_DRIVER).toBe('local');
+    expect(result.STORAGE_LOCAL_ROOT).toBe('/home/luis/Plantillas/proyectos-ia/crm-negocio/asset-varios/');
+    expect(result.STORAGE_PUBLIC_BASE_URL).toBe('http://localhost:3000/assets');
+    expect(result.S3_FORCE_PATH_STYLE).toBe(false);
   });
 
   it('coercea PORT numérico y respeta overrides', () => {
@@ -46,5 +50,19 @@ describe('env.validation', () => {
 
   it('falla cuando LOG_LEVEL no es válido', () => {
     expect(() => envSchema.parse({ ...baseEnv, LOG_LEVEL: 'verbose' })).toThrow();
+  });
+
+  it('interpreta S3_FORCE_PATH_STYLE desde string', () => {
+    const result = envSchema.parse({
+      ...baseEnv,
+      STORAGE_DRIVER: 's3',
+      S3_REGION: 'us-east-1',
+      S3_BUCKET: 'crm-assets',
+      S3_ACCESS_KEY_ID: 'demo-key',
+      S3_SECRET_ACCESS_KEY: 'demo-secret',
+      S3_FORCE_PATH_STYLE: 'true',
+    });
+
+    expect(result.S3_FORCE_PATH_STYLE).toBe(true);
   });
 });

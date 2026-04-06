@@ -1,14 +1,17 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtPayload } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,9 +21,11 @@ import {
   CreateClientDto,
   CreateTagDto,
   ListClientsQueryDto,
+  UploadClientAvatarDto,
   UpdateClientDto,
 } from './clients.dto';
 import { ClientsService } from './clients.service';
+import { STORAGE_PORT, type StoragePort } from '../storage/storage.port';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -34,7 +39,11 @@ import {
 @ApiTags('Clients')
 @ApiBearerAuth()
 export class ClientsController {
-  constructor(private readonly clientsService: ClientsService) {}
+  constructor(
+    private readonly clientsService: ClientsService,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    private readonly config: ConfigService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Listar clientes con búsqueda, tag y paginación' })
@@ -78,6 +87,64 @@ export class ClientsController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.clientsService.update(id, dto, user.sub);
+  }
+
+  @Post(':id/avatar/upload')
+  @ApiOperation({ summary: 'Subir avatar de cliente (base64) al storage configurado' })
+  async uploadAvatar(
+    @Param('id') id: string,
+    @Body() body: UploadClientAvatarDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const mimeType = body?.mimeType ?? 'image/jpeg';
+    const fileName = body?.fileName ?? 'avatar.jpg';
+    const base64 = body?.base64 ?? '';
+
+    if (!base64 || base64.trim().length < 8) {
+      throw new BadRequestException('base64 is required');
+    }
+
+    const cleaned = base64.includes(',') ? base64.split(',')[1] : base64;
+    const buffer = Buffer.from(cleaned, 'base64');
+
+    const currentClient = this.clientsService.findById(id);
+    const previousAvatarUrl = currentClient.avatarUrl;
+
+    const stored = await this.storage.put({
+      content: buffer,
+      fileName,
+      mimeType,
+      folder: `clients/${id}/avatar`,
+    });
+
+    const updatedClient = await this.clientsService.updateAvatar(id, stored.url, user.sub);
+
+    const previousKey = this.extractStorageKey(previousAvatarUrl);
+    if (previousKey && previousAvatarUrl !== stored.url) {
+      try {
+        await this.storage.remove(previousKey);
+      } catch {
+        // no-op: no debe romper upload por fallo de limpieza
+      }
+    }
+
+    return {
+      file: stored,
+      client: updatedClient,
+    };
+  }
+
+  private extractStorageKey(url?: string): string | undefined {
+    if (!url) {
+      return undefined;
+    }
+
+    const base = this.config.get<string>('STORAGE_PUBLIC_BASE_URL', 'http://localhost:3000/assets').replace(/\/$/, '');
+    if (!url.startsWith(`${base}/`)) {
+      return undefined;
+    }
+
+    return url.slice(base.length + 1);
   }
 
   @Delete(':id')

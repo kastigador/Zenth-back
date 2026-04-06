@@ -13,6 +13,20 @@ import {
 } from 'class-validator';
 import { NotifyChannel } from './clients.types';
 
+export class UploadClientAvatarDto {
+  @IsString()
+  @IsNotEmpty()
+  base64!: string;
+
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+}
+
 export class CreateClientDto {
   @IsString()
   @IsNotEmpty()

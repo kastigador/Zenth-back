@@ -39,6 +39,7 @@ export class ClientsService implements OnModuleInit {
         id: dbClient.id,
         businessName: dbClient.businessName,
         contactName: dbClient.contactName ?? undefined,
+        avatarUrl: dbClient.avatarUrl ?? undefined,
         email: dbClient.email ?? undefined,
         phoneE164: dbClient.phoneE164 ?? undefined,
         address: dbClient.address ?? undefined,
@@ -90,6 +91,34 @@ export class ClientsService implements OnModuleInit {
     this.clients.push(client);
     this.logActivity(client.id, 'client.created', `Client ${client.businessName} created`, actorId);
 
+    if (this.prisma) {
+      const notifyChannelMap = {
+        whatsapp: 'WHATSAPP',
+        telegram: 'TELEGRAM',
+        both: 'BOTH',
+      } as const;
+
+      this.prisma.client
+        .create({
+          data: {
+            id: client.id,
+            businessName: client.businessName,
+            contactName: client.contactName,
+            avatarUrl: client.avatarUrl,
+            email: client.email,
+            phoneE164: client.phoneE164,
+            address: client.address,
+            notifyChannel: notifyChannelMap[client.notifyChannel],
+            telegramChatId: client.telegramChatId,
+            tags: client.tags,
+            isActive: client.isActive,
+          },
+        })
+        .catch(() => {
+          // noop: mantener compatibilidad con modo memoria
+        });
+    }
+
     return client;
   }
 
@@ -106,6 +135,51 @@ export class ClientsService implements OnModuleInit {
     }
     this.logActivity(client.id, 'client.updated', `Client ${client.businessName} updated`, actorId);
 
+    if (this.prisma) {
+      const notifyChannelMap = {
+        whatsapp: 'WHATSAPP',
+        telegram: 'TELEGRAM',
+        both: 'BOTH',
+      } as const;
+
+      this.prisma.client
+        .update({
+          where: { id },
+          data: {
+            businessName: client.businessName,
+            contactName: client.contactName,
+            avatarUrl: client.avatarUrl,
+            email: client.email,
+            phoneE164: client.phoneE164,
+            address: client.address,
+            notifyChannel: notifyChannelMap[client.notifyChannel],
+            telegramChatId: client.telegramChatId,
+            tags: client.tags,
+            isActive: client.isActive,
+          },
+        })
+        .catch(() => {
+          // noop: mantener compatibilidad con modo memoria
+        });
+    }
+
+    return client;
+  }
+
+  async updateAvatar(id: string, avatarUrl: string, actorId: string) {
+    const client = this.findById(id);
+    client.avatarUrl = avatarUrl;
+    client.updatedAt = new Date().toISOString();
+
+    this.logActivity(client.id, 'client.avatar.updated', `Avatar updated for ${client.businessName}`, actorId);
+
+    if (this.prisma) {
+      await this.prisma.client.update({
+        where: { id },
+        data: { avatarUrl },
+      });
+    }
+
     return client;
   }
 
@@ -115,6 +189,17 @@ export class ClientsService implements OnModuleInit {
     client.updatedAt = new Date().toISOString();
 
     this.logActivity(client.id, 'client.deactivated', `Client ${client.businessName} deactivated`, actorId);
+
+    if (this.prisma) {
+      this.prisma.client
+        .update({
+          where: { id },
+          data: { isActive: false },
+        })
+        .catch(() => {
+          // noop: mantener compatibilidad con modo memoria
+        });
+    }
 
     return { ok: true };
   }
