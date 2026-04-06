@@ -6,13 +6,14 @@ describe('ClientsService', () => {
     const prismaMock = {
       client: {
         findMany: jest.fn().mockResolvedValue([
-          {
-            id: 'db-client-1',
-            businessName: 'Cliente Persistido',
-            contactName: 'Test User',
-            email: 'test@test.com',
-            phoneE164: null,
-            address: null,
+            {
+              id: 'db-client-1',
+              businessName: 'Cliente Persistido',
+              contactName: 'Test User',
+              avatarUrl: 'http://localhost:3000/assets/clients/db-client-1/avatar/demo.jpg',
+              email: 'test@test.com',
+              phoneE164: null,
+              address: null,
             notifyChannel: 'WHATSAPP',
             telegramChatId: null,
             tags: ['vip'],
@@ -32,6 +33,47 @@ describe('ClientsService', () => {
     expect(prismaMock.client.findMany).toHaveBeenCalled();
     expect(listed.total).toBe(1);
     expect(listed.items[0]?.businessName).toBe('Cliente Persistido');
+    expect(listed.items[0]?.avatarUrl).toContain('/assets/clients/db-client-1/avatar/');
+  });
+
+  it('actualiza avatar de cliente y persiste en prisma cuando aplica', async () => {
+    const prismaMock = {
+      client: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'db-client-1',
+            businessName: 'Cliente Persistido',
+            contactName: null,
+            avatarUrl: null,
+            email: null,
+            phoneE164: null,
+            address: null,
+            notifyChannel: 'WHATSAPP',
+            telegramChatId: null,
+            tags: [],
+            isActive: true,
+            createdAt: new Date('2026-04-04T00:00:00.000Z'),
+            updatedAt: new Date('2026-04-04T00:00:00.000Z'),
+          },
+        ]),
+        update: jest.fn().mockResolvedValue({ ok: true }),
+      },
+    } as any;
+
+    const service = new ClientsService(prismaMock);
+    await service.onModuleInit();
+
+    const result = await service.updateAvatar(
+      'db-client-1',
+      'http://localhost:3000/assets/clients/db-client-1/avatar/new.jpg',
+      'u1',
+    );
+
+    expect(result.avatarUrl).toContain('/assets/clients/db-client-1/avatar/');
+    expect(prismaMock.client.update).toHaveBeenCalledWith({
+      where: { id: 'db-client-1' },
+      data: { avatarUrl: 'http://localhost:3000/assets/clients/db-client-1/avatar/new.jpg' },
+    });
   });
 
   it('crea cliente valido y lo lista', () => {

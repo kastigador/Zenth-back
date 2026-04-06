@@ -8,12 +8,24 @@ describe('AuthController', () => {
       login: jest.fn(async () => ({
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
-        user: { id: 'u1', email: 'test@empresa.com', role: 'vendedor' },
+        user: {
+          id: 'u1',
+          name: 'Test User',
+          email: 'test@empresa.com',
+          avatarUrl: 'http://localhost:3000/assets/users/u1/avatar/demo.jpg',
+          role: 'vendedor',
+        },
       })),
       register: jest.fn(async () => ({
         accessToken: 'new-access-token',
         refreshToken: 'new-refresh-token',
-        user: { id: 'u2', email: 'new@empresa.com', role: 'vendedor' },
+        user: {
+          id: 'u2',
+          name: 'Nuevo',
+          email: 'new@empresa.com',
+          avatarUrl: undefined,
+          role: 'vendedor',
+        },
       })),
       refresh: jest.fn(async () => ({ accessToken: 'fresh-token' })),
     } as unknown as AuthService;
@@ -104,13 +116,21 @@ describe('AuthController', () => {
     const { controller } = makeController();
 
     const result = controller.me({
-      user: { sub: 'u1', email: 'test@empresa.com', role: 'admin' },
+      user: {
+        sub: 'u1',
+        email: 'test@empresa.com',
+        role: 'admin',
+        name: 'Admin User',
+        avatarUrl: 'http://localhost:3000/assets/users/u1/avatar/demo.jpg',
+      },
     } as unknown as Request);
 
     expect(result).toEqual({
       user: {
         id: 'u1',
+        name: 'Admin User',
         email: 'test@empresa.com',
+        avatarUrl: 'http://localhost:3000/assets/users/u1/avatar/demo.jpg',
         role: 'admin',
       },
     });

@@ -4,6 +4,7 @@ export type ClientRecord = {
   id: string;
   businessName: string;
   contactName?: string;
+  avatarUrl?: string;
   email?: string;
   phoneE164?: string;
   address?: string;

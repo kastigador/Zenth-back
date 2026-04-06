@@ -52,6 +52,7 @@ describe('UsersService', () => {
           id: true,
           name: true,
           email: true,
+          avatarUrl: true,
           role: true,
           createdAt: true,
         },
@@ -72,6 +73,35 @@ describe('UsersService', () => {
         expect(user).toHaveProperty('role');
         expect(user).toHaveProperty('createdAt');
       });
+    });
+  });
+
+  describe('updateMyAvatar', () => {
+    it('debe actualizar avatarUrl del usuario autenticado', async () => {
+      const updated = {
+        id: 'user1',
+        name: 'Admin User',
+        email: 'admin@test.com',
+        avatarUrl: 'http://localhost:3000/assets/users/user1/avatar/demo.jpg',
+        role: 'ADMIN',
+      };
+
+      (prismaService.user as any).update = jest.fn().mockResolvedValue(updated);
+
+      const result = await service.updateMyAvatar('user1', updated.avatarUrl);
+
+      expect((prismaService.user as any).update).toHaveBeenCalledWith({
+        where: { id: 'user1' },
+        data: { avatarUrl: updated.avatarUrl },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          role: true,
+        },
+      });
+      expect(result).toEqual(updated);
     });
   });
 });

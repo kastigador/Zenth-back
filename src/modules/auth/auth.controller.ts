@@ -136,7 +136,9 @@ export class AuthController {
     return {
       user: {
         id: user.sub,
+        name: (user as any).name,
         email: user.email,
+        avatarUrl: (user as any).avatarUrl,
         role: user.role,
       },
     };

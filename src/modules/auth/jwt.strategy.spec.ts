@@ -11,8 +11,17 @@ describe('JwtStrategy', () => {
       }),
     } as unknown as ConfigService;
 
-    const strategy = new JwtStrategy(config);
-    return { strategy, config };
+    const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          name: 'Demo User',
+          avatarUrl: 'http://localhost:3000/assets/users/u1/avatar/demo.jpg',
+        }),
+      },
+    } as any;
+
+    const strategy = new JwtStrategy(config, prisma);
+    return { strategy, config, prisma };
   }
 
   it('construye strategy leyendo JWT_ACCESS_SECRET', () => {
@@ -26,7 +35,13 @@ describe('JwtStrategy', () => {
 
     await expect(
       strategy.validate({ sub: 'u1', email: 'u1@test.com', role: 'admin' }),
-    ).resolves.toEqual({ sub: 'u1', email: 'u1@test.com', role: 'admin' });
+    ).resolves.toEqual({
+      sub: 'u1',
+      email: 'u1@test.com',
+      role: 'admin',
+      name: 'Demo User',
+      avatarUrl: 'http://localhost:3000/assets/users/u1/avatar/demo.jpg',
+    });
   });
 
   it('validate lanza UnauthorizedException con payload incompleto', async () => {

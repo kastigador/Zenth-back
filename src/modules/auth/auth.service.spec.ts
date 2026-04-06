@@ -37,9 +37,10 @@ describe('AuthService', () => {
 
     const result = await service.login('admin@crm.local', 'secret123');
 
-    expect(result.user.email).toBe('admin@crm.local');
-    expect(result.accessToken).toContain('1h');
-    expect(result.refreshToken).toContain('7d');
+      expect(result.user.email).toBe('admin@crm.local');
+      expect(result.user).toHaveProperty('avatarUrl');
+      expect(result.accessToken).toContain('1h');
+      expect(result.refreshToken).toContain('7d');
     verifySpy.mockRestore();
   });
 
@@ -136,6 +137,7 @@ describe('AuthService.register', () => {
     });
 
     expect(result.user.email).toBe('nuevo@empresa.com');
+    expect(result.user).toHaveProperty('avatarUrl');
     expect(result.user.name).toBe('Juan Pérez');
     expect(result.user.businessName).toBe('Ferretería García');
     expect(result.user.userRole).toBe('dueno');
@@ -320,6 +322,7 @@ describe('AuthService.register', () => {
           name: 'DB User',
           email: 'dbuser@empresa.com',
           passwordHash: hash,
+          avatarUrl: 'http://localhost:3000/assets/users/db-login-1/avatar/demo.jpg',
           role: 'SELLER',
           isActive: true,
           createdAt: new Date(),
@@ -345,6 +348,7 @@ describe('AuthService.register', () => {
     expect(prismaMock.client.create).not.toHaveBeenCalled();
     expect(result.user.id).toBe('db-login-1');
     expect(result.user.role).toBe('vendedor');
+    expect(result.user.avatarUrl).toBe('http://localhost:3000/assets/users/db-login-1/avatar/demo.jpg');
   });
 
   it('login crea cliente si el usuario existe pero no tiene cliente asociado', async () => {
@@ -356,6 +360,7 @@ describe('AuthService.register', () => {
           name: 'Sin Cliente',
           email: 'sincliente@empresa.com',
           passwordHash: hash,
+          avatarUrl: null,
           role: 'SELLER',
           isActive: true,
           createdAt: new Date(),

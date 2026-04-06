@@ -14,6 +14,7 @@ import { QueueModule } from './modules/queue/queue.module';
 import { UsersModule } from './modules/users/users.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
     QueueModule,
     ChatModule,
     TasksModule,
+    StorageModule,
   ],
 })
 export class AppModule {}
