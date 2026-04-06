@@ -8,5 +8,6 @@ import { StorageModule } from '../storage/storage.module';
   imports: [StorageModule],
   controllers: [UsersController],
   providers: [UsersService, PrismaService],
+  exports: [UsersService],
 })
 export class UsersModule {}

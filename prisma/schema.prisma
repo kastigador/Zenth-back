@@ -219,3 +219,17 @@ model ChatMessage {
 
   @@index([userId, createdAt])
 }
+
+model AiAssistantAudit {
+  id               String   @id @default(cuid())
+  userId           String
+  userRole         String
+  requestMessage   String
+  responsePreview  String
+  sensitiveBlocked Boolean  @default(false)
+  requestId        String?
+  toolsJson        Json?
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
