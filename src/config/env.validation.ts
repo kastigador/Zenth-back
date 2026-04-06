@@ -26,6 +26,11 @@ export const envSchema = z.object({
   S3_ENDPOINT: z.string().url().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
+  AI_PROVIDER: z.enum(['none', 'openai']).default('none'),
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().default('gpt-4o-mini'),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  AI_AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   S3_FORCE_PATH_STYLE: z
     .union([z.boolean(), z.string()])
     .optional()

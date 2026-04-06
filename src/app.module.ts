@@ -15,6 +15,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { StorageModule } from './modules/storage/storage.module';
     ChatModule,
     TasksModule,
     StorageModule,
+    AiAssistantModule,
   ],
 })
 export class AppModule {}

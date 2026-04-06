@@ -26,6 +26,10 @@ describe('env.validation', () => {
     expect(result.STORAGE_DRIVER).toBe('local');
     expect(result.STORAGE_LOCAL_ROOT).toBe('/home/luis/Plantillas/proyectos-ia/crm-negocio/asset-varios/');
     expect(result.STORAGE_PUBLIC_BASE_URL).toBe('http://localhost:3000/assets');
+    expect(result.AI_PROVIDER).toBe('none');
+    expect(result.AI_MODEL).toBe('gpt-4o-mini');
+    expect(result.AI_TIMEOUT_MS).toBe(12000);
+    expect(result.AI_AUDIT_RETENTION_DAYS).toBe(30);
     expect(result.S3_FORCE_PATH_STYLE).toBe(false);
   });
 
